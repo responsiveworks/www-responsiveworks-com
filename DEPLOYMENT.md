@@ -1,292 +1,440 @@
-# Deployment Guide for Digital Ocean
+# Deployment Guide for ResponsiveWorks Website
 
-This guide covers two methods to deploy your Next.js website on Digital Ocean:
-1. **App Platform** (Recommended - Easiest)
-2. **Droplet with Docker** (More control)
+## Droplet Information
+- **IP Address**: 67.205.144.75
+- **Domain**: responsiveworks.com
+- **DNS Provider**: Cloudflare
 
 ---
 
-## Method 1: Digital Ocean App Platform (Recommended)
+## Step 1: Configure Cloudflare DNS
 
-App Platform is the easiest way to deploy your Next.js application with automatic builds, deployments, and SSL certificates.
+Login to your Cloudflare dashboard and add these DNS records:
 
-### Prerequisites
-- Digital Ocean account
-- GitHub/GitLab repository with your code
-- Domain name (optional but recommended)
+### Record 1 - Root Domain
+- **Type**: A
+- **Name**: @ (represents root domain)
+- **IPv4 address**: 67.205.144.75
+- **Proxy status**: Proxied (orange cloud icon - enables DDoS protection and CDN)
+- **TTL**: Auto
 
-### Steps
+### Record 2 - WWW Subdomain
+- **Type**: A
+- **Name**: www
+- **IPv4 address**: 67.205.144.75
+- **Proxy status**: Proxied (orange cloud icon)
+- **TTL**: Auto
 
-#### 1. Push Your Code to GitHub
+### Cloudflare SSL/TLS Settings
+1. Go to SSL/TLS > Overview in Cloudflare dashboard
+2. Set encryption mode to **Full** (or **Full (Strict)** if you set up SSL on the server)
+   - **Flexible**: Visitor to Cloudflare encrypted, Cloudflare to server unencrypted
+   - **Full**: Both encrypted, server can use self-signed certificate
+   - **Full (Strict)**: Both encrypted with valid certificate (requires Let's Encrypt setup)
+
+---
+
+## Step 2: Deploy to DigitalOcean Droplet
+
+### Upload Files to Droplet
+
+**Option A: Using SCP**
 ```bash
+# From your local machine (run from project directory)
+scp -r . root@67.205.144.75:/root/responsiveworks-new
+```
+
+**Option B: Using Git (Recommended)**
+```bash
+# First, push your code to GitHub if you haven't already
 git add .
-git commit -m "Add Digital Ocean deployment configuration"
+git commit -m "Prepare for deployment"
 git push origin master
+
+# Then SSH into your droplet and clone
+ssh root@67.205.144.75
+
+# On the droplet
+cd /root
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git responsiveworks-new
+cd responsiveworks-new
 ```
 
-#### 2. Create App on Digital Ocean
-
-**Option A: Using the Web Interface**
-1. Log in to [Digital Ocean](https://cloud.digitalocean.com/)
-2. Click "Create" > "Apps"
-3. Connect your GitHub repository
-4. Select your repository and the `master` branch
-5. Digital Ocean will auto-detect Next.js and configure build settings
-6. Review the configuration:
-   - Build Command: `npm run build`
-   - Run Command: `npm start`
-   - HTTP Port: `3000`
-7. Choose your plan (Basic - $5/month is sufficient for most sites)
-8. Click "Next" and then "Create Resources"
-
-**Option B: Using the CLI with App Spec**
+### Install Node.js on Droplet
 ```bash
-# Install doctl (Digital Ocean CLI)
-# See: https://docs.digitalocean.com/reference/doctl/how-to/install/
+# SSH into your droplet (if not already connected)
+ssh root@67.205.144.75
 
-# Authenticate
-doctl auth init
-
-# Update .do/app.yaml with your GitHub repo details
-# Then create the app
-doctl apps create --spec .do/app.yaml
-```
-
-#### 3. Configure Custom Domain (Optional)
-1. In your app dashboard, go to "Settings" > "Domains"
-2. Add your custom domain
-3. Update your domain's DNS records as instructed
-4. Digital Ocean will automatically provision an SSL certificate
-
-#### 4. Environment Variables (If Needed)
-If you need environment variables:
-1. Go to "Settings" > "App-Level Environment Variables"
-2. Add your variables (API keys, database URLs, etc.)
-3. App will automatically redeploy
-
-### Monitoring and Logs
-- View logs: App dashboard > "Runtime Logs"
-- View build logs: App dashboard > "Build Logs"
-- Monitor performance: App dashboard > "Insights"
-
----
-
-## Method 2: Digital Ocean Droplet with Docker
-
-This method gives you more control but requires more setup and maintenance.
-
-### Prerequisites
-- Digital Ocean account
-- Domain name (optional)
-- Basic knowledge of Linux and Docker
-
-### Steps
-
-#### 1. Create a Droplet
-1. Log in to [Digital Ocean](https://cloud.digitalocean.com/)
-2. Click "Create" > "Droplets"
-3. Choose:
-   - Image: Ubuntu 22.04 LTS
-   - Plan: Basic ($6/month is sufficient)
-   - Add SSH key for authentication
-4. Click "Create Droplet"
-
-#### 2. Connect to Your Droplet
-```bash
-ssh root@YOUR_DROPLET_IP
-```
-
-#### 3. Install Docker and Docker Compose
-```bash
-# Update packages
-apt update && apt upgrade -y
-
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-
-# Install Docker Compose
-apt install docker-compose -y
+# Install Node.js 20.x
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
 
 # Verify installation
-docker --version
-docker-compose --version
+node --version
+npm --version
 ```
 
-#### 4. Clone Your Repository
+### Install Dependencies and Build
 ```bash
-# Install Git if needed
-apt install git -y
+# Navigate to project directory
+cd /root/responsiveworks-new
 
-# Clone your repo
-cd /var/www
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git responsiveworks
-cd responsiveworks
+# Install dependencies
+npm install
+
+# Build the Next.js project
+npm run build
 ```
 
-#### 5. Build and Run Docker Container
-```bash
-# Build the Docker image
-docker build -t responsiveworks-website .
+---
 
-# Run the container
-docker run -d \
-  --name responsiveworks \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  responsiveworks-website
-```
+## Step 3: Install and Configure Nginx
 
-#### 6. Set Up Nginx as Reverse Proxy (Optional but Recommended)
+Nginx will act as a reverse proxy, forwarding requests from port 80/443 to your Next.js app on port 3000.
+
 ```bash
 # Install Nginx
-apt install nginx -y
+apt-get update
+apt-get install -y nginx
 
-# Create Nginx configuration
-cat > /etc/nginx/sites-available/responsiveworks << 'EOF'
-server {
-    listen 80;
-    server_name your-domain.com www.your-domain.com;
+# Copy the nginx configuration from your project
+cp /root/responsiveworks-new/nginx.conf /etc/nginx/sites-available/responsiveworks
 
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-EOF
-
-# Enable the site
+# Create symbolic link to enable the site
 ln -s /etc/nginx/sites-available/responsiveworks /etc/nginx/sites-enabled/
-rm /etc/nginx/sites-enabled/default
 
-# Test and restart Nginx
+# Remove default Nginx configuration
+rm -f /etc/nginx/sites-enabled/default
+
+# Test Nginx configuration for syntax errors
 nginx -t
+
+# If test passes, restart Nginx
 systemctl restart nginx
+
+# Enable Nginx to start on boot
+systemctl enable nginx
 ```
 
-#### 7. Set Up SSL with Let's Encrypt (Recommended)
+---
+
+## Step 4: Install PM2 and Start Application
+
+PM2 is a production process manager that keeps your app running and restarts it if it crashes.
+
+```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start the application using the ecosystem file
+cd /root/responsiveworks-new
+pm2 start ecosystem.config.js
+
+# Save the PM2 process list (so it persists across reboots)
+pm2 save
+
+# Set PM2 to start on system boot
+pm2 startup
+# IMPORTANT: Run the command that PM2 outputs above
+
+# Check application status
+pm2 status
+
+# View logs
+pm2 logs responsiveworks
+```
+
+---
+
+## Step 5: Configure Firewall (UFW)
+
+Secure your droplet by allowing only necessary ports.
+
+```bash
+# Allow SSH (port 22)
+ufw allow 22/tcp
+
+# Allow HTTP (port 80)
+ufw allow 80/tcp
+
+# Allow HTTPS (port 443)
+ufw allow 443/tcp
+
+# Enable firewall
+ufw enable
+
+# Check firewall status
+ufw status verbose
+```
+
+---
+
+## Step 6 (Optional): Set Up SSL with Let's Encrypt
+
+If you want SSL directly on your server (recommended for Cloudflare Full (Strict) mode):
+
 ```bash
 # Install Certbot
-apt install certbot python3-certbot-nginx -y
+apt-get install -y certbot python3-certbot-nginx
 
-# Get SSL certificate
-certbot --nginx -d your-domain.com -d www.your-domain.com
+# Get SSL certificate for both domain and www subdomain
+certbot --nginx -d responsiveworks.com -d www.responsiveworks.com
 
-# Certbot will automatically configure Nginx for HTTPS
+# Follow the prompts:
+# - Enter your email address
+# - Agree to terms of service
+# - Choose whether to redirect HTTP to HTTPS (recommended: yes)
+
+# Test automatic renewal
+certbot renew --dry-run
 ```
 
-#### 8. Set Up Automatic Updates (Optional)
+**Note**: Certbot will automatically modify your Nginx configuration to use HTTPS and set up auto-renewal.
+
+---
+
+## Verification Steps
+
+### 1. Test Direct IP Access
 ```bash
-# Create update script
-cat > /root/update-website.sh << 'EOF'
-#!/bin/bash
-cd /var/www/responsiveworks
+curl http://67.205.144.75
+```
+This should return your website HTML.
+
+### 2. Check DNS Propagation
+Visit https://dnschecker.org and enter:
+- `responsiveworks.com`
+- `www.responsiveworks.com`
+
+Both should show IP: 67.205.144.75
+
+### 3. Test Domain Access
+- Visit: http://responsiveworks.com
+- Visit: http://www.responsiveworks.com
+- Visit: https://responsiveworks.com
+- Visit: https://www.responsiveworks.com
+
+All should load your website.
+
+---
+
+## Useful Management Commands
+
+### PM2 Process Management
+```bash
+pm2 status                    # View all processes
+pm2 restart responsiveworks   # Restart the app
+pm2 stop responsiveworks      # Stop the app
+pm2 start responsiveworks     # Start the app
+pm2 logs responsiveworks      # View logs
+pm2 logs responsiveworks --lines 100  # View last 100 lines
+pm2 monit                     # Real-time monitoring
+pm2 delete responsiveworks    # Remove from PM2
+```
+
+### Nginx Management
+```bash
+systemctl status nginx        # Check Nginx status
+systemctl restart nginx       # Restart Nginx
+systemctl stop nginx          # Stop Nginx
+systemctl start nginx         # Start Nginx
+nginx -t                      # Test configuration
+tail -f /var/log/nginx/error.log    # View error logs
+tail -f /var/log/nginx/access.log   # View access logs
+```
+
+### Application Updates
+When you make changes to your code:
+
+```bash
+# SSH into droplet
+ssh root@67.205.144.75
+
+# Navigate to project
+cd /root/responsiveworks-new
+
+# Pull latest changes (if using Git)
 git pull origin master
-docker stop responsiveworks
-docker rm responsiveworks
-docker build -t responsiveworks-website .
-docker run -d \
-  --name responsiveworks \
-  --restart unless-stopped \
-  -p 3000:3000 \
-  responsiveworks-website
-EOF
 
-chmod +x /root/update-website.sh
+# Install any new dependencies
+npm install
 
-# Run manually when you want to update:
-# /root/update-website.sh
+# Rebuild the app
+npm run build
+
+# Restart with PM2
+pm2 restart responsiveworks
+
+# View logs to ensure it started correctly
+pm2 logs responsiveworks
 ```
-
-### Monitoring Docker Container
-```bash
-# View logs
-docker logs responsiveworks
-
-# Follow logs in real-time
-docker logs -f responsiveworks
-
-# Check container status
-docker ps
-
-# Restart container
-docker restart responsiveworks
-```
-
----
-
-## Cost Estimates
-
-### App Platform
-- **Basic Plan**: $5/month
-- Includes: 512 MB RAM, automatic scaling, SSL, automatic deployments
-- Best for: Small to medium traffic sites
-
-### Droplet with Docker
-- **Basic Droplet**: $6/month (1 GB RAM, 25 GB SSD)
-- **Regular Droplet**: $12/month (2 GB RAM, 50 GB SSD)
-- Best for: Custom configurations, multiple apps
-
----
-
-## Recommended Setup
-
-For most users, **Digital Ocean App Platform** is recommended because:
-- Automatic deployments from GitHub
-- Automatic SSL certificates
-- Built-in monitoring and logs
-- No server maintenance required
-- Automatic scaling
-- Easy rollbacks
-
-Use **Droplet with Docker** if you need:
-- Multiple applications on one server
-- Custom server configurations
-- Root access for specific tools
-- Lower costs for multiple apps
 
 ---
 
 ## Troubleshooting
 
-### App Platform Issues
-- **Build fails**: Check build logs in the dashboard
-- **App crashes**: Check runtime logs for errors
-- **Slow performance**: Upgrade to a higher plan
+### Website Not Loading
 
-### Docker/Droplet Issues
-- **Container won't start**: Check logs with `docker logs responsiveworks`
-- **Port already in use**: Stop conflicting services or change ports
-- **Out of memory**: Upgrade droplet or optimize application
+**Check if Next.js is running:**
+```bash
+pm2 status
+# Should show "responsiveworks" with status "online"
+```
 
-### General Issues
-- **502 Bad Gateway**: Application not running or wrong port
-- **Connection refused**: Check firewall settings
-- **Slow loading**: Enable caching, optimize images, use CDN
+**Check PM2 logs:**
+```bash
+pm2 logs responsiveworks
+# Look for errors
+```
+
+**Check Nginx status:**
+```bash
+systemctl status nginx
+# Should show "active (running)"
+```
+
+**Check Nginx error logs:**
+```bash
+tail -f /var/log/nginx/error.log
+```
+
+**Check if port 3000 is in use:**
+```bash
+netstat -tulpn | grep 3000
+# Should show Node.js process listening on port 3000
+```
+
+### DNS Not Resolving
+
+- DNS changes can take 5-30 minutes to propagate globally
+- Verify Cloudflare DNS records are correct
+- Ensure Cloudflare proxy is enabled (orange cloud, not gray)
+- Clear browser cache or test in incognito/private mode
+- Try flushing DNS cache on your computer:
+  - Windows: `ipconfig /flushdns`
+  - Mac: `sudo dscacheutil -flushcache`
+  - Linux: `sudo systemd-resolve --flush-caches`
+
+### 502 Bad Gateway Error
+
+This means Nginx can't connect to your Next.js app:
+
+```bash
+# Check if app is running
+pm2 status
+
+# Check app logs for errors
+pm2 logs responsiveworks
+
+# Restart the app
+pm2 restart responsiveworks
+
+# Check if port 3000 is open
+netstat -tulpn | grep 3000
+```
+
+### Port 3000 Already in Use
+
+```bash
+# Find what's using port 3000
+netstat -tulpn | grep 3000
+
+# Kill the process (replace PID with actual process ID)
+kill -9 PID
+
+# Or stop PM2 process
+pm2 stop responsiveworks
+pm2 start responsiveworks
+```
+
+### SSL Certificate Issues
+
+```bash
+# Check certificate status
+certbot certificates
+
+# Renew certificates manually
+certbot renew
+
+# Test Nginx configuration
+nginx -t
+
+# Restart Nginx
+systemctl restart nginx
+```
 
 ---
 
-## Next Steps
+## Performance Optimization Tips
 
-After deployment:
-1. Set up monitoring (Digital Ocean Monitoring is free)
-2. Configure backups if using Droplet
-3. Set up CI/CD for automatic deployments
-4. Add custom domain and SSL
-5. Configure environment variables for production
-6. Set up error tracking (Sentry, etc.)
+1. **Enable Gzip compression in Nginx** (add to nginx.conf):
+   ```nginx
+   gzip on;
+   gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+   ```
+
+2. **Use Cloudflare's caching and optimization features**:
+   - Enable Auto Minify (JS, CSS, HTML)
+   - Enable Brotli compression
+   - Set up Page Rules for caching
+
+3. **Monitor resource usage**:
+   ```bash
+   htop            # Interactive process viewer
+   df -h           # Disk space usage
+   free -m         # Memory usage
+   ```
+
+4. **Set up log rotation** to prevent disk space issues:
+   ```bash
+   pm2 install pm2-logrotate
+   pm2 set pm2-logrotate:max_size 10M
+   pm2 set pm2-logrotate:retain 7
+   ```
 
 ---
 
-## Support
+## Backup Strategy
 
-- Digital Ocean Docs: https://docs.digitalocean.com/
-- Digital Ocean Community: https://www.digitalocean.com/community/
-- Next.js Deployment Docs: https://nextjs.org/docs/deployment
+### Manual Backup
+```bash
+# Backup your project
+cd /root
+tar -czf responsiveworks-backup-$(date +%Y%m%d).tar.gz responsiveworks-new/
+
+# Download to local machine
+scp root@67.205.144.75:/root/responsiveworks-backup-*.tar.gz .
+```
+
+### Automated Backups
+Enable DigitalOcean's automated backup feature:
+1. Go to your droplet in the DigitalOcean dashboard
+2. Click "Backups" tab
+3. Enable weekly automated backups ($1.20/month for basic droplet)
+
+---
+
+## Security Best Practices
+
+1. **Disable root login** and create a sudo user
+2. **Change default SSH port** from 22 to something else
+3. **Use SSH keys** instead of passwords
+4. **Keep system updated**:
+   ```bash
+   apt update && apt upgrade -y
+   ```
+5. **Install fail2ban** to prevent brute force attacks:
+   ```bash
+   apt install fail2ban -y
+   systemctl enable fail2ban
+   ```
+
+---
+
+## Additional Resources
+
+- DigitalOcean Docs: https://docs.digitalocean.com/
+- Next.js Deployment: https://nextjs.org/docs/deployment
+- PM2 Documentation: https://pm2.keymetrics.io/
+- Nginx Documentation: https://nginx.org/en/docs/
+- Cloudflare Docs: https://developers.cloudflare.com/

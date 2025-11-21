@@ -6,7 +6,7 @@ export default function NotFound() {
       <div className="container-custom text-center">
         <h1 className="heading-2 mb-4">Project Not Found</h1>
         <p className="body-large mb-8">
-          Sorry, we couldn't find the project you're looking for.
+          Sorry, we couldn&apos;t find the project you&apos;re looking for.
         </p>
         <Link href="/#portfolio" className="btn-primary inline-block">
           View All Projects

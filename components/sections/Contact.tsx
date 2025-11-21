@@ -39,7 +39,7 @@ export default function Contact() {
           <div className="text-center mb-12">
             <h2 className="heading-2 mb-6">Get In Touch</h2>
             <p className="body-large">
-              Ready to start your project? Send us a message and we'll get back to you
+              Ready to start your project? Send us a message and we&apos;ll get back to you
               within 24 hours.
             </p>
           </div>
@@ -133,7 +133,7 @@ export default function Contact() {
 
             {status === "success" && (
               <p className="text-center text-green-600 font-medium">
-                Thank you! We'll be in touch soon.
+                Thank you! We&apos;ll be in touch soon.
               </p>
             )}
           </form>

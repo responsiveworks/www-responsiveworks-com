@@ -146,7 +146,7 @@ export default function ProjectPage({ params }: Props) {
             Ready to start your project?
           </h3>
           <p className="text-neutral-600 mb-6">
-            Let's discuss how we can help bring your ideas to life.
+            Let&apos;s discuss how we can help bring your ideas to life.
           </p>
           <Link href="/#contact" className="btn-primary inline-block">
             Get In Touch

@@ -8,7 +8,7 @@ export default function Portfolio() {
         <div className="max-w-3xl mx-auto text-center mb-16">
           <h2 className="heading-2 mb-6">Our Work</h2>
           <p className="body-large">
-            Explore some of the projects we've delivered for our clients.
+            Explore some of the projects we&apos;ve delivered for our clients.
           </p>
         </div>
 

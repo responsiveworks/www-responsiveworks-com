@@ -133,7 +133,33 @@ ufw allow 443/tcp
 echo "✓ Firewall configured"
 echo ""
 
-# Step 8: Check status
+# Step 8: Set up SSL certificates with Let's Encrypt (optional but recommended)
+echo "Step 8: Setting up SSL certificates..."
+echo "Installing Certbot..."
+apt-get install -y certbot python3-certbot-nginx
+
+echo ""
+echo "Obtaining SSL certificate..."
+echo "Note: This requires your domain DNS to be pointing to this server"
+echo ""
+
+# Try to get SSL certificate (will fail gracefully if DNS not propagated yet)
+if certbot --nginx -d responsiveworks.com -d www.responsiveworks.com --non-interactive --agree-tos --register-unsafely-without-email --redirect; then
+    echo "✓ SSL certificates installed successfully!"
+    systemctl reload nginx
+else
+    echo "⚠ SSL certificate setup failed (DNS might not be propagated yet)"
+    echo "  You can run this command later to set up SSL:"
+    echo "  certbot --nginx -d responsiveworks.com -d www.responsiveworks.com"
+    echo ""
+    echo "  For now, removing HTTPS block from nginx config..."
+    # Comment out the HTTPS server block if SSL failed
+    sed -i '/# HTTPS Server Block/,/^}$/s/^/#/' /etc/nginx/sites-available/responsiveworks
+    nginx -t && systemctl reload nginx
+fi
+echo ""
+
+# Step 9: Check status
 echo "=========================================="
 echo "Deployment Complete!"
 echo "=========================================="
@@ -151,8 +177,12 @@ curl -I http://localhost:3000 2>&1 | head -5 || echo "Waiting for app to start..
 echo ""
 echo "=========================================="
 echo "Your website should now be live at:"
-echo "  - https://responsiveworks.com"
-echo "  - https://www.responsiveworks.com"
+echo "  - http://responsiveworks.com"
+echo "  - http://www.responsiveworks.com"
+if [ -f /etc/letsencrypt/live/responsiveworks.com/fullchain.pem ]; then
+    echo "  - https://responsiveworks.com"
+    echo "  - https://www.responsiveworks.com"
+fi
 echo "=========================================="
 echo ""
 echo "Useful commands:"
@@ -161,3 +191,4 @@ echo "  pm2 restart responsiveworks - Restart the app"
 echo "  pm2 status - Check PM2 status"
 echo "  nginx -t - Test nginx config"
 echo "  systemctl status nginx - Check nginx status"
+echo "  certbot renew --dry-run - Test SSL renewal"

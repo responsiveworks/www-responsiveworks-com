@@ -50,15 +50,16 @@ function InstallForm() {
 
     // Add .myshopify.com if not present
     if (!shop.includes(".myshopify.com")) {
-      // Remove any other domain suffix if present
-      shop = shop.split(".")[0];
+      // Convert dots to dashes for store names like "shop2.responsiveworks"
+      // This becomes "shop2-responsiveworks.myshopify.com"
+      shop = shop.replace(/\./g, "-");
       shop = `${shop}.myshopify.com`;
     }
 
-    // Validate shop domain format
+    // Validate shop domain format (allows letters, numbers, and dashes)
     const shopifyDomainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/;
     if (!shopifyDomainRegex.test(shop)) {
-      setError("Please enter a valid Shopify store domain (e.g., your-store or your-store.myshopify.com)");
+      setError("Please enter a valid Shopify store domain (e.g., your-store, shop2.responsiveworks, or your-store.myshopify.com)");
       setIsLoading(false);
       return;
     }

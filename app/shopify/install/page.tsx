@@ -63,8 +63,9 @@ function InstallForm() {
       return;
     }
 
-    // Redirect to the OAuth initialization endpoint
-    window.location.href = `/api/shopify/auth?shop=${encodeURIComponent(shop)}`;
+    // Redirect to Shopify's official installation URL
+    const clientId = process.env.NEXT_PUBLIC_SHOPIFY_API_KEY || "f4c77b1fcd79557d0182dfbf38e3adbf";
+    window.location.href = `https://admin.shopify.com/oauth/install?client_id=${clientId}&shop=${encodeURIComponent(shop)}`;
   };
 
   return (

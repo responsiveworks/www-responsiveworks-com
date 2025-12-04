@@ -121,7 +121,7 @@ export default function ShopifyPage() {
                 <div>
                   <h3 className="heading-3 mb-2">Connect Your Accounts</h3>
                   <p className="text-neutral-600">
-                    Install the ResponsiveWorks app from the Shopify App Store and
+                    <Link href="/shopify/install" className="text-primary-600 hover:text-primary-700 underline">Install the ResponsiveWorks app</Link> and
                     connect it to your NetSuite account using secure OAuth
                     authentication.
                   </p>
@@ -211,12 +211,33 @@ export default function ShopifyPage() {
             Ready to Streamline Your Operations?
           </h2>
           <p className="text-primary-100 text-lg mb-8 max-w-2xl mx-auto">
-            Get in touch with our team to learn how the ResponsiveWorks Shopify
-            App can transform your e-commerce integration.
+            Get started now by installing the ResponsiveWorks Shopify App, or
+            get in touch with our team to learn more.
           </p>
-          <Link href="/#contact" className="btn-secondary">
-            Contact Us Today
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/shopify/install"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-primary-700 font-semibold rounded-lg hover:bg-primary-50 transition-colors"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Install App
+            </Link>
+            <Link href="/#contact" className="btn-secondary">
+              Contact Us
+            </Link>
+          </div>
         </div>
       </section>
     </main>
